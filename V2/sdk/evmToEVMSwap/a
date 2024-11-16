@@ -1,0 +1,70 @@
+
+> start
+> ts-node src/index.ts
+
+aavePoolInterface Interface {
+  fragments: [
+    FunctionFragment {
+      type: 'function',
+      name: 'supply',
+      constant: false,
+      inputs: [Array],
+      outputs: [],
+      payable: false,
+      stateMutability: 'nonpayable',
+      gas: null,
+      _isFragment: true
+    }
+  ],
+  _abiCoder: AbiCoder { coerceFunc: null },
+  functions: {
+    'supply(address,uint256,address,uint16)': FunctionFragment {
+      type: 'function',
+      name: 'supply',
+      constant: false,
+      inputs: [Array],
+      outputs: [],
+      payable: false,
+      stateMutability: 'nonpayable',
+      gas: null,
+      _isFragment: true
+    }
+  },
+  errors: {},
+  events: {},
+  structs: {},
+  deploy: ConstructorFragment {
+    name: null,
+    type: 'constructor',
+    inputs: [],
+    payable: false,
+    stateMutability: 'nonpayable',
+    gas: null,
+    _isFragment: true
+  },
+  _isInterface: true
+}
+Initialized Squid SDK
+Parameters: {
+  fromAddress: '0x806686442aF382B627818D08dA93c96C2Fb0a981',
+  fromChain: '42161',
+  fromToken: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+  fromAmount: '500000',
+  toChain: '10',
+  toToken: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
+  toAddress: '0x806686442aF382B627818D08dA93c96C2Fb0a981',
+  enableBoost: true,
+  postHooks: {
+    chainType: 'evm',
+    calls: [ [Object], [Object] ],
+    provider: 'Squid',
+    description: 'aave Lend',
+    logoURI: 'https://pbs.twimg.com/profile_images/1548647667135291394/W2WOtKUq_400x400.jpg'
+  }
+}
+Calculated route: 499747
+Approved 500000 tokens for 0xce16F69375520ab01377ce7B88f5BA8C48F8D666
+Finished! Check Axelarscan for details: https://axelarscan.io/gmp/0x2c4cb83fb2003925b3bc1250598fbbf6df3795e995ef68f3ceea9b198fc2ef53
+Initial route status: ongoing
+Route status: success
+Swap transaction executed: 0x2c4cb83fb2003925b3bc1250598fbbf6df3795e995ef68f3ceea9b198fc2ef53

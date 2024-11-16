@@ -10,23 +10,22 @@ dotenv.config();
 const privateKey: string = process.env.PRIVATE_KEY!;
 const integratorId: string = process.env.INTEGRATOR_ID!;
 const FROM_CHAIN_RPC: string = process.env.RPC_ENDPOINT!;
-const radiantLendingPoolAddress: string = process.env.RADIANT_LENDING_POOL_ADDRESS!;
-const usdcArbitrumAddress: string = process.env.USDC_ARBITRUM_ADDRESS!;
+const aavePoolAddress: string = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+const usdcArbitrumAddress: string = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+const usdcOptimismAddress: string = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
 
 // Define chain and token addresses
-const fromChainId = "56"; // Binance
-const toChainId = "42161"; // Arbitrum
-const fromToken = "0x55d398326f99059fF775485246999027B3197955"; // Define departing token
+const fromChainId = "42161"; // Binance
+const toChainId = "10"; // Arbitrum
+const fromToken = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"; // Define departing token
 
 
 // Define amount to be swapped and deposited
-const amount = "1000000000000000";
-
-// Import Radiant lending pool ABI
-import radiantLendingPoolAbi from "../abi/radiantLendingPoolAbi";
+const amount = "1000000";
 
 // Import erc20 contract ABI
 import erc20Abi from "../abi/erc20Abi";
+import aaveAbi from "../abi/aaveAbi";
 
 // Set up JSON RPC provider and signer 
 const provider = new ethers.providers.JsonRpcProvider(FROM_CHAIN_RPC);
@@ -39,18 +38,18 @@ const signer = new ethers.Wallet(privateKey, provider);
 // Approve the lending contract to spend the erc20
 const erc20Interface = new ethers.utils.Interface(erc20Abi);
 const approvalerc20 = erc20Interface.encodeFunctionData("approve", [
-  radiantLendingPoolAddress,
+  aavePoolAddress,
   ethers.constants.MaxUint256,
 ]);
 
 // Create contract interface and encode deposit function for Radiant lending pool
-const radiantLendingPoolInterface = new ethers.utils.Interface(
-  radiantLendingPoolAbi
+const aaveInterface = new ethers.utils.Interface(
+  aaveAbi
 );
-const depositEncodedData = radiantLendingPoolInterface.encodeFunctionData(
-  "deposit",
+const depositEncodedData = aaveInterface.encodeFunctionData(
+  "supply",
   [
-    usdcArbitrumAddress,
+    usdcOptimismAddress,
     "0", // Placeholder for dynamic balance
     signer.address,
     0,
@@ -72,7 +71,7 @@ const getRoute = async (params: any) => {
           "x-integrator-id": integratorId,
           "Content-Type": "application/json",
         },
-      }
+      } 
     );
     const requestId = result.headers["x-request-id"]; // Retrieve request ID from response headers
     return { data: result.data, requestId: requestId };
@@ -173,24 +172,24 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
   const params = {
     fromAddress: signer.address,
     fromChain: fromChainId,
-    fromToken: fromToken,
+    fromToken: usdcArbitrumAddress,
     fromAmount: amount,
     toChain: toChainId,
-    toToken: usdcArbitrumAddress,
+    toToken: usdcOptimismAddress,
     toAddress: signer.address,
     slippage: 1, //optional, Squid will dynamically calculate if removed
     postHook: {
       chainType: "evm",
       //fundAmount: amount,  //only required for prehooks
-      //fundToken: usdcArbitrumAddress, //only required for prehooks
+      //fundToken: usdcOptimismAddress, //only required for prehooks
       calls: [
         {
           callType: 1,
-          target: usdcArbitrumAddress,
+          target: usdcOptimismAddress,
           value: "0", // this will be replaced by the full native balance of the multicall after the swap
           callData: approvalerc20,
           payload: {
-            tokenAddress: usdcArbitrumAddress, // unused in callType 2, dummy value
+            tokenAddress: usdcOptimismAddress, // unused in callType 2, dummy value
             inputPos: "1", // unused
           },
           estimatedGas: "50000",
@@ -198,11 +197,11 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
         },
         {
           callType: 1, // SquidCallType.FULL_TOKEN_BALANCE
-          target: radiantLendingPoolAddress,
+          target: aavePoolAddress,
           value: "0",
           callData: depositEncodedData,
           payload: {
-            tokenAddress: usdcArbitrumAddress,
+            tokenAddress: usdcOptimismAddress,
             inputPos: "1",
           },
           estimatedGas: "50000",
@@ -210,7 +209,7 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
         },
       ],
       provider: "Integration Test", //This should be the name of your product or application that is triggering the hook
-      description: "Radiant Lend postHook",
+      description: "Aave Lend postHook",
       logoURI: "https://pbs.twimg.com/profile_images/1548647667135291394/W2WOtKUq_400x400.jpg", //Add your product or application's logo here
     },
   };
@@ -226,8 +225,8 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
 
   const transactionRequest = route.transactionRequest;
 
-  // Approve the transactionRequest.target to spend fromAmount of fromToken
-  await approveSpending(transactionRequest.target, fromToken, amount);
+  // Approve the transactionRequest.target to spend fromAmount of usdcArbitrumAddress
+  await approveSpending(transactionRequest.target, usdcArbitrumAddress, amount);
 
   // Execute the swap transaction
   const tx = await signer.sendTransaction({

@@ -11,12 +11,12 @@ const FROM_CHAIN_RPC: string = process.env.RPC_ENDPOINT!;
 
 // Define chain and token addresses
 const fromChainId = "42161"; // Arbitrum
-const toChainId = "56"; // Binance Smart Chain
-const toToken = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"; // BUSD on Binance
-const WETH_ADDRESS = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1";
+const toChainId = "10"; // op Smart Chain
+const toToken = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"; // BUSD on Binance
+const USDC_ADDRESS = "0xaf88d065e77c8cc2239327c5edb3a432268e5831";
 
 // Define amount to be wrapped and bridged
-const amount = ethers.utils.parseEther("0.0001"); // Amount in ETH
+const amount = ethers.utils.parseUnits("1", 6)
 
 // Set up JSON RPC provider and signer
 const provider = new ethers.providers.JsonRpcProvider(FROM_CHAIN_RPC);
@@ -49,7 +49,7 @@ const getSDK = (): Squid => {
   const params = {
     fromAddress: signer.address,
     fromChain: fromChainId,
-    fromToken: WETH_ADDRESS, // WETH on Arbitrum
+    fromToken: USDC_ADDRESS, // WETH on Arbitrum
     fromAmount: amount.toString(),
     toChain: toChainId,
     toToken: toToken,
@@ -66,7 +66,7 @@ const getSDK = (): Squid => {
         {
           chainType: ChainType.EVM,
           callType: 2, // 2 corresponds to CALL_DATA
-          target: WETH_ADDRESS,
+          target: USDC_ADDRESS,
           value: amount.toString(), // Amount of ETH to wrap
           callData: wrapEncodedData,
           payload: {

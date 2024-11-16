@@ -2,6 +2,9 @@ import { Squid } from "@0xsquid/sdk"; // Import Squid SDK
 import { ethers } from "ethers"; // Import ethers library
 import * as dotenv from "dotenv"; // Import dotenv for environment variables
 dotenv.config(); // Load environment variables from .env file
+import { ChainType } from "@0xsquid/squid-types";
+import erc20Abi from "../erc20Abi";
+import aaveAbi from "../aaveAbi";  
 
 // Retrieve environment variables
 const privateKey: string = process.env.PRIVATE_KEY!;
@@ -14,17 +17,42 @@ if (!privateKey || !integratorId || !FROM_CHAIN_RPC) {
 }
 
 // Define chain and token addresses
-const fromChainId = "56"; // BNB chain ID
-const toChainId = "42161"; // Arbitrum chain ID
-const fromToken = "0x55d398326f99059fF775485246999027B3197955"; // USDT token address on BNB
-const toToken = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // USDC token address on Arbitrum
+const fromChainId = "42161"; // BNB chain ID
+const toChainId = "10"; // Arbitrum chain ID
+const fromToken = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // USDT token address on BNB
+const toToken = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"; // USDC token address on Arbitrum
+const usdcOptimismAddress: string = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
+const aavePoolAddress: string = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
 
 // Define the amount to be sent (in smallest unit, e.g., wei for Ethereum)
-const amount = "1000000000000000"; 
+const amount = "500000"; 
 
 // Set up JSON RPC provider and signer using the private key and RPC URL
 const provider = new ethers.providers.JsonRpcProvider(FROM_CHAIN_RPC);
 const signer = new ethers.Wallet(privateKey, provider);
+
+  // Approve the lending contract to spend the erc20
+  const erc20Interface = new ethers.utils.Interface(erc20Abi);
+  const approvalerc20 = erc20Interface.encodeFunctionData("approve", [
+    aavePoolAddress,
+    ethers.constants.MaxUint256,
+  ]);
+
+  // Create contract interface and encode deposit function for Radiant lending pool
+  const aavePoolInterface = new ethers.utils.Interface(
+    aaveAbi
+  );
+  console.log("aavePoolInterface", aavePoolInterface)
+  const depositEncodedData = aavePoolInterface.encodeFunctionData(
+    "supply",
+    [
+      usdcOptimismAddress,
+      "0",
+      // "0x806686442aF382B627818D08dA93c96C2Fb0a981",
+      signer.address,
+      0,
+    ]
+  );
 
 // Initialize the Squid client with the base URL and integrator ID
 const getSDK = (): Squid => {
@@ -68,6 +96,38 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
     toToken: toToken,
     toAddress: signer.address,
     enableBoost: true,
+    postHooks: {
+      chainType: ChainType.EVM,
+      calls: [
+        {
+          chainType: ChainType.EVM, 
+          callType: 1,// SquidCallType.FULL_TOKEN_BALANCE
+          target: usdcOptimismAddress,
+          value: "0", // this will be replaced by the full native balance of the multicall after the swap
+          callData: approvalerc20,
+          payload: {
+            tokenAddress: usdcOptimismAddress,
+            inputPos: 1,
+          },
+          estimatedGas: "50000",
+        },
+        {
+          chainType: ChainType.EVM,
+          callType: 1, // SquidCallType.FULL_TOKEN_BALANCE
+          target: aavePoolAddress,
+          value: "0",
+          callData: depositEncodedData,
+          payload: {
+            tokenAddress: usdcOptimismAddress,
+            inputPos: 1,
+          },
+          estimatedGas: "50000",
+        },
+      ],
+      provider: "Squid", //This should be the name of your product or application that is triggering the hook
+      description: "aave Lend",
+      logoURI: "https://pbs.twimg.com/profile_images/1548647667135291394/W2WOtKUq_400x400.jpg", //This should be your product or applications logo
+    },
   };
 
   console.log("Parameters:", params); // Printing the parameters for QA

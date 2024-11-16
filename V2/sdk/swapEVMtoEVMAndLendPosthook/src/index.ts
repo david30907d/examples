@@ -10,27 +10,27 @@ dotenv.config();
 const privateKey: string = process.env.PRIVATE_KEY!;
 const integratorId: string = process.env.INTEGRATOR_ID!;
 const FROM_CHAIN_RPC: string = process.env.RPC_ENDPOINT!;
-const radiantLendingPoolAddress: string = process.env.RADIANT_LENDING_POOL_ADDRESS!;
-const usdcArbitrumAddress: string = process.env.USDC_ARBITRUM_ADDRESS!;
+const aavePoolAddress: string = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"
+const usdcArbitrumAddress: string = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+const usdcOptimismAddress: string = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
 
 // Define chain and token addresses
-const fromChainId = "56"; // Binance
-const toChainId = "42161"; // Arbitrum
-const fromToken = "0x55d398326f99059fF775485246999027B3197955"; // Define departing token
-
+const fromChainId = "42161"; // Binance
+const toChainId = "10"; // Arbitrum
+const fromToken = usdcArbitrumAddress; // Define departing token
 // Define amount to be sent
-const amount = "100000000000000000";
+const amount = "100000";
 
 // Set up JSON RPC provider and signer using the private key and RPC URL
 const provider = new ethers.providers.JsonRpcProvider(FROM_CHAIN_RPC);
 const signer = new ethers.Wallet(privateKey, provider);
+console.log("signer", signer.address)
 
-// Import Radiant lending pool ABI
-import radiantLendingPoolAbi from "../abi/radiantLendingPoolAbi";
 
 // Import erc20 contract ABI
 import erc20Abi from "../abi/erc20Abi";
-import { ChainType } from "@0xsquid/squid-types";
+import aaveAbi from "../abi/aaveAbi";  
+import { ChainType, RouteRequest } from "@0xsquid/squid-types";
 
 
 // Function to get Squid SDK instance
@@ -74,20 +74,21 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
   // Approve the lending contract to spend the erc20
   const erc20Interface = new ethers.utils.Interface(erc20Abi);
   const approvalerc20 = erc20Interface.encodeFunctionData("approve", [
-    radiantLendingPoolAddress,
+    aavePoolAddress,
     ethers.constants.MaxUint256,
   ]);
 
   // Create contract interface and encode deposit function for Radiant lending pool
   const radiantLendingPoolInterface = new ethers.utils.Interface(
-    radiantLendingPoolAbi
+    aaveAbi
   );
   const depositEncodedData = radiantLendingPoolInterface.encodeFunctionData(
-    "deposit",
+    "supply",
     [
-      usdcArbitrumAddress,
-      "0", // Placeholder for dynamic balance
-      signer.address,
+      usdcOptimismAddress,
+      "0",
+      "0x43cd745Bd5FbFc8CfD79ebC855f949abc79a1E0C",
+      // signer.address,
       0,
     ]
   );
@@ -101,22 +102,22 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
     fromToken: fromToken,
     fromAmount: amount,
     toChain: toChainId,
-    toToken: usdcArbitrumAddress,
+    toToken: usdcOptimismAddress,
     toAddress: signer.address,
     slippage: 1, //optional, Squid will dynamically calculate if removed
     quoteOnly: false,
     enableBoost: true,
-    postHooks: {
+    postHook: {
       chainType: ChainType.EVM,
       calls: [
         {
           chainType: ChainType.EVM, 
           callType: 1,// SquidCallType.FULL_TOKEN_BALANCE
-          target: usdcArbitrumAddress,
+          target: usdcOptimismAddress,
           value: "0", // this will be replaced by the full native balance of the multicall after the swap
           callData: approvalerc20,
           payload: {
-            tokenAddress: usdcArbitrumAddress,
+            tokenAddress: usdcOptimismAddress,
             inputPos: 1,
           },
           estimatedGas: "50000",
@@ -124,18 +125,18 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
         {
           chainType: ChainType.EVM,
           callType: 1, // SquidCallType.FULL_TOKEN_BALANCE
-          target: radiantLendingPoolAddress,
+          target: aavePoolAddress,
           value: "0",
           callData: depositEncodedData,
           payload: {
-            tokenAddress: usdcArbitrumAddress,
+            tokenAddress: usdcOptimismAddress,
             inputPos: 1,
           },
-          estimatedGas: "50000",
+          estimatedGas: "500000",
         },
       ],
       provider: "Squid", //This should be the name of your product or application that is triggering the hook
-      description: "Radiant Lend",
+      description: "Aave Lend",
       logoURI: "https://pbs.twimg.com/profile_images/1548647667135291394/W2WOtKUq_400x400.jpg", //This should be your product or applications logo
     },
   };
@@ -144,11 +145,11 @@ const approveSpending = async (transactionRequestTarget: string, fromToken: stri
   console.log("Parameters:", params); // Printing the parameters for QA
 
   // Get the swap route using Squid SDK
-  const { route, requestId } = await squid.getRoute(params);
+  const { route, requestId } = await squid.getRoute(params as RouteRequest);
   console.log("Calculated route:", route.estimate.toAmount);
 
   const transactionRequest = route.transactionRequest;
-
+  // console.log("transactionRequest", transactionRequest)
   // Approve the transactionRequest.target to spend fromAmount of fromToken
   await approveSpending(transactionRequest.target, fromToken, amount);
 
