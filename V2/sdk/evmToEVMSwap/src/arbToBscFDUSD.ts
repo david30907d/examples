@@ -2,9 +2,6 @@ import { Squid } from "@0xsquid/sdk"; // Import Squid SDK
 import { ethers } from "ethers"; // Import ethers library
 import * as dotenv from "dotenv"; // Import dotenv for environment variables
 dotenv.config(); // Load environment variables from .env file
-import { ChainType } from "@0xsquid/squid-types";
-import erc20Abi from "../erc20Abi";
-import aaveAbi from "../aaveAbi";  
 
 // Retrieve environment variables
 const privateKey: string = process.env.PRIVATE_KEY!;
@@ -19,8 +16,8 @@ if (!privateKey || !integratorId || !FROM_CHAIN_RPC) {
 // Define chain and token addresses
 const fromChainId = "42161"; // BNB chain ID
 const toChainId = "56"; // Arbitrum chain ID
-const fromToken = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // USDT token address on BNB
-const toToken = "0x55d398326f99059fF775485246999027B3197955"; // USDC token address on Arbitrum
+const fromToken = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"; // USDT token address on Arbitrum
+const toToken = "0x55d398326f99059fF775485246999027B3197955"; // USDC token address on BSC
 
 // Define the amount to be sent (in smallest unit, e.g., wei for Ethereum)
 const amount = "500000"; 
@@ -28,7 +25,6 @@ const amount = "500000";
 // Set up JSON RPC provider and signer using the private key and RPC URL
 const provider = new ethers.providers.JsonRpcProvider(FROM_CHAIN_RPC);
 const signer = new ethers.Wallet(privateKey, provider);
-
 
 // Initialize the Squid client with the base URL and integrator ID
 const getSDK = (): Squid => {
